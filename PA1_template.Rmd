@@ -1,0 +1,114 @@
+Peer Assessment 1
+========================================================
+
+Loading and preprocessing the data
+
+```{r}
+echo = TRUE
+library(ggplot2)
+setwd("/Users/jamessweeney2/Desktop/Coursera")
+
+## Load the data
+activity <- read.csv("activity.csv")
+
+## Remove NA data
+act <- activity[!is.na(activity$steps),]
+```
+
+What is the Mean total number of steps taken per day?
+
+```{r}
+## Create hisogram of steps per day
+g <- ggplot(data = act, aes(x = steps))
+g + geom_histogram(binwidth = 10) + coord_cartesian(ylim = c(0, 500))
+
+## Calculate mean and median steps per day and print
+means <- tapply(act$steps, act$date, mean)
+medians <- tapply(act$steps, act$date, median)
+print(means, digits = 0)
+print(medians, digits = 0)
+```
+
+What is the average daily activity pattern?
+
+```{r}
+## find means by time
+hours <- tapply(act$steps, act$interval, mean)
+hours <- cbind(hours, names(hours))
+colnames(hours) <- c("steps", "interval")
+
+## Plot means by time
+plot(hours[,2], hours[,1], type = "l", xlab = "Time", ylab = "Steps", main = "Average Steps by Time of Day")
+
+## Calculate which time had most steps on average
+hours[which.max(hours[,1]),2]
+```
+
+Imputing missing values
+
+```{r}
+
+## Count missing values
+sum(!complete.cases(activity))
+
+## Create a function to count the data without NAs
+R <- function(x) {sum(complete.cases(x))}
+
+## Apply that function over activity data
+data <- tapply(activity$steps, activity$date, R)
+
+## Show data available data by date
+check <- cbind(data, means)
+
+## List dates with no data
+zeros <- row.names(check[check[,1] == 0,])
+
+## show averages by interval in numeric format
+intaverages <- cbind(as.numeric(hours[,1]), activity[1:288,3])
+
+## fill in NAs with average daily data in activity2
+activity2 <- activity
+for(i in 1:length(zeros)) {
+    activity2[activity2[,2] == zeros[i],][,1] <- intaverages[,1]
+}
+
+## Plot histogram of filled in data
+h <- ggplot(data = activity2, aes(x = steps))
+h + geom_histogram(binwidth = 10) + coord_cartesian(ylim = c(0, 1000))
+
+# Calculate means and medians of filled in data
+means2 <- tapply(activity2$steps, activity2$date, mean)
+medians2 <- tapply(activity2$steps, activity2$date, median)
+print(means2, digits = 0)
+print(medians2, digits = 0)
+```
+
+Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+## Create a factor variable in activity2 for whether it is a weekend
+day <- cbind(weekdays(as.Date(activity[,2])), "weekday")
+day[day[,1] == "Saturday",][,2] <- "weekend"
+day[day[,1] == "Sunday",][,2] <- "weekend"
+activity2[,4] <- as.factor(day[,2])
+names(activity2) <- c("steps", "date", "interval", "weekend")
+
+bytime <- tapply(activity2$steps, activity2$interval, mean)
+bytime <- cbind(bytime, names(bytime))
+colnames(bytime) <- c("steps", "interval")
+
+## split activity2 data into weekend and weekday data
+tt <- split(activity2, activity2$weekend)
+weekendtime <- tapply(tt$weekend[,1], tt$weekend[,3], mean)
+weekdaytime <- tapply(tt$weekday[,1], tt$weekday[,3], mean)
+weekendtime <- cbind(weekendtime, names(weekendtime))
+weekdaytime <- cbind(weekdaytime, names(weekdaytime))
+
+## Plot steps by interval for weekdays and weekends
+par(mfrow = c(2,1))
+plot(as.numeric(as.character(weekendtime[,2])), as.numeric(as.character(weekendtime[,1])), type = "l", ylab = "Steps", xlab = "Interval", main = "Weekend Steps by Interval")
+plot(as.numeric(as.character(weekdaytime[,2])), as.numeric(as.character(weekdaytime[,1])), type = "l", ylab = "Steps", xlab = "Interval", main = "Weekday Steps by Interval")
+```
+
+
+
