@@ -1,0 +1,72 @@
+## Using Machine Learning to Predict Efficacy of Weight-lifting Exercises
+========================================================
+
+###Summary
+
+We achieve 98.9% accuracy in predicting the correct "classe" factor for an exercise. The classe factor is a classification of how well a person performed a weightlifting exercise based on detailed calculations. The original data set has 160 columns of data with 19622 entries each. 
+
+###Data
+
+Not all 160 columns of data are needed for successful prediction. There is a significant number of empty cells in the data. We remove all columns which are 95% empty. This reduces the number of vectors from 160 to 60. Visual examination confirms that a further seven vectors contain non-measurement information and so we exclude those also. We are left with 
+52 columns. Finally, we provide a simple function for visual examination of the relationship between each remaining column and the classe dependent variable. g(i) where i is the column number between 1 and 52. 
+
+
+```{r}
+library(caret); library(kernlab); library(ggplot2); library(lattice)
+setwd("/Users/jamessweeney2/Desktop/Coursera")
+pml <- read.csv("pml-training (1).csv")
+pmlt <- read.csv("/Users/jamessweeney2/Downloads/pml-testing.csv")
+
+## calculating the percentage of each column with empty data and discarding those that 
+## are more than 95% empty. 
+## we also discard columns 1-7 which visual inspection tells us are not measurements
+
+empty = function(x) {length(x[x == ""])/length(x)}
+emptyvectors <- round(apply(pml,2,empty),3)
+emptyvectorindex <- which(emptyvectors > 0.95)
+gooddata <- pml[,-emptyvectorindex]
+gooddata2 <- gooddata[,8:60]
+
+
+## function g allows visual inspection of each column's relationship with classe
+g <- function(z) {ggplot(gooddata2, aes(x=gooddata2[,z], y=classe)) + geom_point()}
+```
+
+### Cross Validation
+
+We partition the large training data set but cutting it in half randomly. This speeds up calculation time without a significant loss in prediction power. It also gives us a reduced training set and a validation set. 
+
+```{r}
+set.seed(123)
+## cut the original training set in half to speed up calculation. 
+compact <- createDataPartition(y=gooddata2$classe, p=0.5, list=FALSE)
+training <- gooddata2[compact,]
+testing <- gooddata2[-compact,]
+```
+
+### Modeling
+
+We tried several models for prediction and found random forest to have the best results. Blending several models including boosting and linear discriminent analysis did not improve our error rate. 
+
+```{r}
+
+install.packages("randomForest")
+library(randomForest)
+
+## run a random forest model on the reduced training set
+rf <- train(classe ~ ., data= training, method="rf", prox=TRUE)
+rf
+pred <- predict(rf, testing)
+
+## confusion matrix
+x <- table(pred, testing$classe)
+
+RFsuccess <- sum(diag(x))/sum(x)
+
+predDF <- data.frame(pred, testing$classe)
+
+
+```
+
+The out of sample testing error of our model is roughly 1.04%. 
+
